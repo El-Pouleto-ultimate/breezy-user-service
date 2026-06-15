@@ -1,0 +1,23 @@
+{
+  "name": "breezy-user-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/El-Pouleto-ultimate/breezy-user-service.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/El-Pouleto-ultimate/breezy-user-service/issues"
+  },
+  "homepage": "https://github.com/El-Pouleto-ultimate/breezy-user-service#readme",
+  "description": "",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
