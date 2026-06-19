@@ -208,3 +208,17 @@ exports.banUser = async (req, res) => {
     return res.status(500).json({ error: { code: 'INTERNAL_ERROR' } });
   }
 };
+
+// Retourne le profil public d'un utilisateur via son username
+exports.getByUsername = async (req, res) => {
+  try {
+    const user = await UserProfile.findOne({ where: { username: req.params.username } });
+    if (!user) {
+      return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'Utilisateur introuvable.' } });
+    }
+    return res.json(user);
+  } catch (err) {
+    console.error('[User] getByUsername error:', err);
+    return res.status(500).json({ error: { code: 'INTERNAL_ERROR' } });
+  }
+};

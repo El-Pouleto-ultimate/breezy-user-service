@@ -7,6 +7,7 @@ router.post('/sync', ctrl.syncUser);
 
 // Routes protégées par le middleware identity (x-user-id obligatoire)
 router.get('/search', identity, ctrl.search);
+router.get('/by-username/:username', identity, ctrl.getByUsername);
 router.get('/:id', identity, ctrl.getUser);
 router.get('/:id/followers', identity, ctrl.getFollowers);
 router.get('/:id/following', identity, ctrl.getFollowing);
