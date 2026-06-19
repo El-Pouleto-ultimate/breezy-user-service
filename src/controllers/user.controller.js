@@ -4,6 +4,7 @@ const UserProfile = require('../models/userProfile.model');
 const Follow = require('../models/follow.model');
 const axios = require('axios');
 
+// Reçoit les données d'un nouvel utilisateur depuis l'auth-service et crée/met à jour son profil
 exports.syncUser = async (req, res) => {
   try {
     if (req.headers['x-internal-secret'] !== process.env.INTERNAL_SECRET) {
@@ -20,6 +21,7 @@ exports.syncUser = async (req, res) => {
   }
 };
 
+// Retourne le profil public d'un utilisateur
 exports.getUser = async (req, res) => {
   try {
     const user = await UserProfile.findByPk(req.params.id);
@@ -33,6 +35,7 @@ exports.getUser = async (req, res) => {
   }
 };
 
+// Recherche insensible à la casse, filtre les comptes bannis et inactifs
 exports.search = async (req, res) => {
   try {
     const { q, page = 1, limit = 10 } = req.query;
@@ -62,6 +65,7 @@ exports.search = async (req, res) => {
   }
 };
 
+// Crée la relation et met à jour les compteurs dans une transaction atomique
 exports.follow = async (req, res) => {
   try {
     const followerId = req.userId;
@@ -82,7 +86,7 @@ exports.follow = async (req, res) => {
         transaction: t,
       });
       if (!created) {
-        const err = new Error('Already following');
+        const err = new Error('Déjà suivi');
         err.status = 409;
         err.code = 'ALREADY_FOLLOWING';
         throw err;
@@ -101,6 +105,7 @@ exports.follow = async (req, res) => {
   }
 };
 
+// Supprime la relation et décrémente les compteurs dans une transaction atomique
 exports.unfollow = async (req, res) => {
   try {
     const followerId = req.userId;
@@ -112,7 +117,7 @@ exports.unfollow = async (req, res) => {
         transaction: t,
       });
       if (deleted === 0) {
-        const err = new Error('Not following');
+        const err = new Error('Non suivi');
         err.status = 404;
         err.code = 'NOT_FOLLOWING';
         throw err;
@@ -131,6 +136,7 @@ exports.unfollow = async (req, res) => {
   }
 };
 
+// Retourne la liste paginée des followers avec leurs profils
 exports.getFollowers = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
@@ -155,6 +161,7 @@ exports.getFollowers = async (req, res) => {
   }
 };
 
+// Retourne uniquement les IDs des utilisateurs suivis
 exports.getFollowing = async (req, res) => {
   try {
     const follows = await Follow.findAll({
@@ -169,6 +176,7 @@ exports.getFollowing = async (req, res) => {
   }
 };
 
+// Réservé aux modérateurs et admins — propage le bannissement vers l'auth-service
 exports.banUser = async (req, res) => {
   try {
     if (req.userRole !== 'moderator' && req.userRole !== 'admin') {
@@ -182,7 +190,7 @@ exports.banUser = async (req, res) => {
 
     await user.update({ is_banned: true });
 
-    // Propager le bannissement vers auth-service pour bloquer le login
+    // Non bloquant : si l'auth-service est indisponible, le ban local reste appliqué
     try {
       await axios.post(`${process.env.AUTH_SERVICE_URL}/auth/internal/ban`, {
         userId: req.params.id,
