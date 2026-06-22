@@ -28,7 +28,13 @@ exports.getUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'Utilisateur introuvable.' } });
     }
-    return res.json(user);
+    const currentUserId = req.userId;
+    let followedByMe = false;
+    if (currentUserId && currentUserId !== req.params.id) {
+      const follow = await Follow.findOne({ where: { follower_id: currentUserId, followed_id: req.params.id } });
+      followedByMe = !!follow;
+    }
+    return res.json({ ...user.toJSON(), followedByMe });
   } catch (err) {
     console.error('[User] getUser error:', err);
     return res.status(500).json({ error: { code: 'INTERNAL_ERROR' } });
@@ -161,15 +167,26 @@ exports.getFollowers = async (req, res) => {
   }
 };
 
-// Retourne uniquement les IDs des utilisateurs suivis
+// Retourne les utilisateurs suivis (objets complets pour l'affichage)
 exports.getFollowing = async (req, res) => {
   try {
-    const follows = await Follow.findAll({
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Follow.findAndCountAll({
       where: { follower_id: req.params.id },
-      attributes: ['followed_id'],
+      limit: parseInt(limit),
+      offset,
     });
-    const ids = follows.map(f => f.followed_id);
-    return res.json({ data: ids });
+
+    const followedIds = rows.map(f => f.followed_id);
+    const users = await UserProfile.findAll({ where: { id: followedIds } });
+
+    return res.json({
+      data: users,
+      ids: followedIds,
+      pagination: { page: parseInt(page), limit: parseInt(limit), total: count, hasNext: offset + rows.length < count }
+    });
   } catch (err) {
     console.error('[User] getFollowing error:', err);
     return res.status(500).json({ error: { code: 'INTERNAL_ERROR' } });
