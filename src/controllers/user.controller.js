@@ -101,6 +101,22 @@ exports.follow = async (req, res) => {
       await UserProfile.increment('followers_count', { where: { id: followedId }, transaction: t });
     });
 
+    // Envoyer une notification de type 'follow' au profil-service (Fx16)
+    try {
+      await axios.post(`${process.env.PROFIL_SERVICE_URL}/api/notifications/internal`, {
+        recipient_user_id: followedId,
+        type: 'follow',
+        from_user_id: followerId,
+        from_username: req.username,
+      }, {
+        headers: { 'x-internal-secret': process.env.INTERNAL_SECRET },
+        timeout: 1000,
+      });
+    } catch (e) {
+      // Notification non critique — on log juste
+      console.warn('[User] Échec envoi notification follow:', e.message);
+    }
+
     return res.json({ message: `Vous suivez maintenant ${target.username}.` });
   } catch (err) {
     if (err.code === 'ALREADY_FOLLOWING') {
