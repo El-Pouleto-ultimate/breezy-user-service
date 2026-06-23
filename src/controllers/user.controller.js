@@ -108,6 +108,7 @@ exports.follow = async (req, res) => {
         type: 'follow',
         from_user_id: followerId,
         from_username: req.username,
+        recipient_role: target.role,
       }, {
         headers: { 'x-internal-secret': process.env.INTERNAL_SECRET },
         timeout: 1000,
