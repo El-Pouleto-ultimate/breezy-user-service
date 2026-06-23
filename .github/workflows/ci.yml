@@ -1,0 +1,73 @@
+# ==============================================================================
+# CI — Tests breezy-user-service
+# ------------------------------------------------------------------------------
+# Ce workflow vérifie l'intégrité du service utilisateur à chaque push
+# ou pull request vers les branches actives du projet (main, dev).
+# ==============================================================================
+name: CI — Tests breezy-user-service
+
+# ── Déclencheurs ───────────────────────────────────────────────────────────────
+# Branches détectées dans ce dépôt : main + dev (origin/dev).
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  test:
+    name: Jest · Node 20 · PostgreSQL 15
+    runs-on: ubuntu-latest
+
+    # ── Services annexes ────────────────────────────────────────────────────────
+    # Les tests utilisent sequelize.authenticate() + sequelize.sync({ force: true })
+    # → base PostgreSQL réelle obligatoire (même logique que breezy-auth-service).
+    #
+    # Note sur le port : le fichier user.test.js contient par défaut l'URL
+    #   postgresql://users_user:devpassword@localhost:5433/breezy_users_test
+    # (port 5433, probablement pour coexister en local avec auth-service).
+    # En CI le service container utilise le port standard 5432 →
+    # DATABASE_URL_TEST (step 4) surcharge cette URL pour pointer sur 5432.
+    services:
+      postgres:
+        image: postgres:15-alpine   # Même version majeure que dans docker-compose.yml
+        env:
+          POSTGRES_USER: users_user
+          POSTGRES_PASSWORD: devpassword
+          POSTGRES_DB: breezy_users_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U users_user -d breezy_users_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # ── 1. Récupérer le code source ───────────────────────────────────────────
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      # ── 2. Configurer la version de Node.js ───────────────────────────────────
+      # ⚠  Aucun .nvmrc ni champ "engines" trouvé dans package.json →
+      #    Node 20 LTS utilisé par défaut (compatible avec jest ^30.4 et express ^5).
+      #    Créer un fichier .nvmrc pour fixer la version de façon pérenne.
+      - name: Configurer Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ── 3. Installer les dépendances de façon reproductible ───────────────────
+      # npm ci garantit une installation stricte basée sur package-lock.json.
+      - name: Installer les dépendances (npm ci)
+        run: npm ci
+
+      # ── 4. Lancer la suite de tests Jest ─────────────────────────────────────
+      # Commande lue depuis package.json → "jest --runInBand"
+      # DATABASE_URL_TEST surcharge le port 5433 du fichier de test par défaut
+      # → port 5432 du service container postgres ci-dessus.
+      - name: Exécuter les tests Jest
+        run: npm test
+        env:
+          DATABASE_URL_TEST: postgresql://users_user:devpassword@localhost:5432/breezy_users_test
