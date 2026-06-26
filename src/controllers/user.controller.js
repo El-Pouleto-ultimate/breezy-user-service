@@ -12,7 +12,7 @@ exports.syncUser = async (req, res) => {
     }
 
     const { id, username, role } = req.body;
-    await UserProfile.upsert({ id, username, role });
+    await UserProfile.upsert({ id, username, role, is_active: true });
 
     return res.status(201).json({ ok: true });
   } catch (err) {
