@@ -1,97 +1,52 @@
-# Breezy — User Service
+# Breezy: user service
 
-Gère les profils utilisateurs, les relations de suivi (follow/unfollow) et les bannissements pour l'application Breezy.
+User profiles for [Breezy](https://github.com/El-Pouleto-ultimate/breezy-infra), a Twitter-like social network
+built as microservices: a profile for every account created by the auth service, user search, follow and
+unfollow with follower and following counters, follower lists, and bans by moderators and admins, passed on to
+the auth service. Following someone sends them a notification through the profil service.
 
-## Ce que fait ce service
+Team project at CESI École d'Ingénieurs (distributed applications, June 2026).
 
-- Synchronisation des profils utilisateurs (créés par l'auth-service à l'inscription)
-- Consultation des profils
-- Recherche d'utilisateurs par nom
-- Follow / unfollow
-- Consultation des followers et des abonnements
-- Bannissement d'utilisateurs (réservé aux modérateurs et admins, propagé vers l'auth-service)
+Stack: Node.js 20, Express 5, Sequelize 6 on PostgreSQL, axios, express-validator.
 
-## Variables d'environnement
+## API
 
-Copie `.env.example` en `.env` et remplis les valeurs :
+| Method | Path | Access |
+|---|---|---|
+| POST | `/users/sync` | internal |
+| GET | `/users/search` | signed in |
+| GET | `/users/by-username/:username` | public |
+| GET | `/users/:id` | signed in |
+| GET | `/users/:id/followers` | signed in |
+| GET | `/users/:id/following` | signed in |
+| POST | `/users/:id/follow` | signed in |
+| DELETE | `/users/:id/follow` | signed in |
+| PUT | `/users/:id/ban` | moderator or admin |
+| GET | `/health` | public |
 
-```bash
-cp .env.example .env
-```
+"Signed in" routes read the `x-user-id` and `x-user-role` headers that the gateway sets once it has checked the
+JWT. "Internal" routes require the `x-internal-secret` header shared by the services.
 
-| Variable | Description |
-|---|---|
-| `PORT` | Port d'écoute (défaut : 3002) |
-| `DATABASE_URL` | URL de connexion PostgreSQL |
-| `INTERNAL_SECRET` | Secret partagé pour les appels entre services |
-| `AUTH_SERVICE_URL` | URL de l'auth-service |
-| `CORS_ORIGIN` | Origine autorisée pour CORS (ex : `http://localhost:3000`) |
+## Configuration
 
-> `INTERNAL_SECRET` doit avoir la même valeur dans tous les services.
+Copy `.env.example` to `.env`. Variables: `PORT`, `DATABASE_URL`, `INTERNAL_SECRET`, `AUTH_SERVICE_URL`,
+`PROFIL_SERVICE_URL`, `CORS_ORIGIN`.
 
-## Lancer en développement
+## Run and test
+
+The whole stack runs with Docker Compose from [breezy-infra](https://github.com/El-Pouleto-ultimate/breezy-infra).
+On its own:
 
 ```bash
 npm install
-npm run dev
+npm run dev     # or: npm start
+npm test        # 13 integration tests (Jest + supertest) against PostgreSQL
 ```
 
-Le service tourne sur `http://localhost:3002`.
+GitHub Actions runs the tests against PostgreSQL 15 on every push and pull request
+([`ci.yml`](.github/workflows/ci.yml)).
 
-## Lancer les tests
+## Team
 
-Assure-toi d'avoir une base PostgreSQL de test (`breezy_users_test`) accessible, puis :
-
-```bash
-npm test
-```
-
-Les tests utilisent `DATABASE_URL_TEST` si défini, sinon ils se connectent à `localhost:5433/breezy_users_test`.
-
-## Lancer avec Docker
-
-```bash
-docker build -t breezy-user .
-docker run -p 3002:3002 --env-file .env breezy-user
-```
-
-## Endpoints
-
-| Méthode | Route | Description |
-|---|---|---|
-| `POST` | `/users/sync` | Synchroniser un utilisateur depuis l'auth-service (interne) |
-| `GET` | `/users/search?q=` | Rechercher des utilisateurs par nom |
-| `GET` | `/users/:id` | Profil d'un utilisateur |
-| `GET` | `/users/:id/followers` | Liste des followers |
-| `GET` | `/users/:id/following` | Liste des abonnements |
-| `POST` | `/users/:id/follow` | Suivre un utilisateur |
-| `DELETE` | `/users/:id/follow` | Ne plus suivre un utilisateur |
-| `PUT` | `/users/:id/ban` | Bannir un utilisateur (modérateur/admin) |
-| `GET` | `/health` | Vérification que le service est up |
-
-### Headers requis (routes protégées)
-
-Les routes protégées attendent ces headers, normalement ajoutés par la gateway :
-
-| Header | Description |
-|---|---|
-| `x-user-id` | UUID de l'utilisateur connecté |
-| `x-user-role` | Rôle (`user`, `moderator`, `admin`) |
-| `x-user-username` | Nom d'utilisateur |
-
-### Header interne
-
-L'endpoint `/users/sync` requiert le header `x-internal-secret` avec la valeur de `INTERNAL_SECRET`.
-
-## Structure du projet
-
-```
-src/
-├── config/       # Connexion base de données (Sequelize)
-├── controllers/  # Logique métier
-├── middleware/   # Identité (extraction des headers)
-├── models/       # Modèles Sequelize (UserProfile, Follow)
-└── routes/       # Définition des routes
-tests/
-└── user.test.js  # Tests d'intégration
-```
+[Estebge](https://github.com/Estebge), [haguetm](https://github.com/haguetm),
+[Jessica14112005](https://github.com/Jessica14112005), [Tuture57](https://github.com/Tuture57).
