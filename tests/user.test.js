@@ -178,7 +178,7 @@ describe('GET /users/:id/followers', () => {
 });
 
 describe('GET /users/:id/following', () => {
-  it('→ 200 avec liste d\'IDs', async () => {
+  it('→ 200 avec la liste des comptes suivis', async () => {
     await UserProfile.bulkCreate([
       { id: U1, username: 'user1', role: 'user' },
       { id: U2, username: 'user2', role: 'user' },
@@ -195,8 +195,9 @@ describe('GET /users/:id/following', () => {
       .set('x-user-role', 'user');
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toContain(U2);
-    expect(res.body.data).toContain(U3);
+    const ids = res.body.data.map((user) => user.id);
+    expect(ids).toContain(U2);
+    expect(ids).toContain(U3);
   });
 });
 
